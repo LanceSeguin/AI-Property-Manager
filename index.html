@@ -6,7 +6,8 @@
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; background: #f4f5f7; color: #333; }
     .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 500px; margin: 0 auto; }
-    h2 { color: #2c3e50; font-size: 20px; margin-top: 0; }
+    h2 { color: #2c3e50; font-size: 20px; margin-top: 0; margin-bottom: 10px; }
+    .details-box { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 12px; font-size: 14px; line-height: 1.6; margin-bottom: 15px; }
     canvas { border: 2px dashed #ccc; border-radius: 8px; width: 100%; background: #fafafa; touch-action: none; cursor: crosshair; }
     .canvas-sig { height: 160px; }
     .canvas-init { height: 100px; }
@@ -20,8 +21,10 @@
 
 <div class="card" id="mainCard">
   <h2>Lease Extension E-Sign</h2>
-  <p id="signerInfo">Loading agreement details...</p>
-  <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
+  
+  <div class="details-box" id="signerInfo">
+    Loading agreement details...
+  </div>
   
   <form id="signForm">
     <div>
@@ -50,8 +53,27 @@
   const BACKEND_API_URL = "https://script.google.com/macros/s/AKfycbwJa6IPTIyKsLVT_PlKY1ZXAW23_1D8RL3oULlXQZnFFrYNKWXzQd0xljUVys9MH8YiDA/exec";
 
   const urlParams = new URLSearchParams(window.location.search);
-  const row = urlParams.get('row') || '1';
+  const row = urlParams.get('row') || '2';
   const tenantNum = urlParams.get('tenantNum') || '1';
+
+  // FETCH AGREEMENT DETAILS ON PAGE LOAD
+  fetch(`${BACKEND_API_URL}?action=get_details&row=${row}&tenantNum=${tenantNum}`)
+    .then(res => res.json())
+    .then(data => {
+      if (data.error) {
+        document.getElementById('signerInfo').innerHTML = `<span style="color:red;">Error: ${data.error}</span>`;
+      } else {
+        document.getElementById('signerInfo').innerHTML = `
+          <strong>Signing As:</strong> ${data.signerName}<br>
+          <strong>Property:</strong> ${data.address}<br>
+          <strong>New Lease Term:</strong> ${data.startDate} to ${data.endDate} (${data.leaseTerm} Months)<br>
+          <strong>New Monthly Rent:</strong> $${data.monthlyRent}
+        `;
+      }
+    })
+    .catch(() => {
+      document.getElementById('signerInfo').innerHTML = '<strong>Review Agreement:</strong> Lease Extension Addendum for designated property.';
+    });
 
   function setupPad(id) {
     var canvas = document.getElementById(id); 
