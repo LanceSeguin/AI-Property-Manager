@@ -2,111 +2,154 @@
 <html>
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lease Extension E-Sign</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; background: #f4f5f7; color: #333; }
-    .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 500px; margin: 0 auto; }
+    body { font-family: -apple-system, sans-serif; padding: 20px; background: #f4f5f7; color: #333; }
+    .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 500px; margin: 0 auto; display: none; }
     h2 { color: #2c3e50; font-size: 20px; margin-top: 0; }
     canvas { border: 2px dashed #ccc; border-radius: 8px; width: 100%; background: #fafafa; touch-action: none; cursor: crosshair; }
     .canvas-sig { height: 160px; }
     .canvas-init { height: 100px; }
     .btn { background: #007bff; color: white; border: none; padding: 14px; width: 100%; border-radius: 8px; font-size: 16px; font-weight: bold; margin-top: 15px; cursor: pointer; }
-    .btn-clear { background: #6c757d; padding: 6px 10px; font-size: 12px; float: right; color: white; border: none; border-radius: 4px; }
+    .btn-clear { background: #6c757d; padding: 6px 10px; font-size: 12px; float: right; color: white; border: none; border-radius: 4px; cursor: pointer; }
     .checkbox-container { margin-top: 15px; font-size: 13px; color: #555; }
     .section-label { font-weight: bold; font-size: 14px; margin-top: 15px; display: block; }
+    #loadingMsg { text-align: center; margin-top: 50px; font-size: 18px; color: #555; }
+    #errorCard { text-align: center; color: #e74c3c; }
   </style>
 </head>
 <body>
 
-<div class="card" id="mainCard">
-  <h2>Lease Extension E-Sign</h2>
-  <p id="signerInfo">Loading agreement details...</p>
-  <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
-  
-  <form id="signForm">
-    <div>
-      <button type="button" class="btn-clear" onclick="clearCanvas('initCanvas')">Clear</button>
-      <span class="section-label">1. Draw Your Initials:</span>
-      <canvas id="initCanvas" class="canvas-init"></canvas>
-    </div>
-    
-    <div style="margin-top: 15px;">
-      <button type="button" class="btn-clear" onclick="clearCanvas('sigCanvas')">Clear</button>
-      <span class="section-label">2. Draw Full Signature:</span>
-      <canvas id="sigCanvas" class="canvas-sig"></canvas>
-    </div>
-    
-    <div class="checkbox-container">
-      <input type="checkbox" id="consent" required> 
-      <label for="consent">I agree that drawing my initials and signature above acts as a legally binding electronic execution.</label>
-    </div>
-    
-    <button type="submit" class="btn" id="submitBtn">Submit Final E-Sign</button>
-  </form>
-</div>
+  <div id="loadingMsg">Verifying secure link...</div>
 
-<script>
-  // PASTE YOUR PUBLISHED GOOGLE APPS SCRIPT EXEC URL HERE
-  const BACKEND_API_URL = "https://script.google.com/macros/s/AKfycbwJa6IPTIyKsLVT_PlKY1ZXAW23_1D8RL3oULlXQZnFFrYNKWXzQd0xljUVys9MH8YiDA/exec";
+  <div id="errorCard" class="card">
+    <h2>Link Expired</h2>
+    <p>This document has already been signed or is no longer waiting on your action.</p>
+  </div>
 
-  const urlParams = new URLSearchParams(window.location.search);
-  const row = urlParams.get('row') || '1';
-  const tenantNum = urlParams.get('tenantNum') || '1';
-
-  function setupPad(id) {
-    var canvas = document.getElementById(id); 
-    var ctx = canvas.getContext('2d'); 
-    var drawing = false;
-    canvas.width = canvas.offsetWidth; 
-    canvas.height = canvas.offsetHeight;
+  <div id="signCard" class="card">
+    <h2>Lease Extension E-Sign</h2>
+    <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
     
-    function getPos(e) { 
-      var rect = canvas.getBoundingClientRect(); 
-      var clientX = e.touches ? e.touches[0].clientX : e.clientX; 
-      var clientY = e.touches ? e.touches[0].clientY : e.clientY; 
-      return { x: clientX - rect.left, y: clientY - rect.top }; 
+    <form id="signForm">
+      <input type="hidden" name="action" value="submit_signature">
+      <input type="hidden" id="rowInput" name="row" value="">
+      <input type="hidden" id="tenantNumInput" name="tenantNum" value="">
+      <input type="hidden" id="initialData" name="initialData">
+      <input type="hidden" id="signatureData" name="signatureData">
+      
+      <div>
+        <button type="button" class="btn-clear" onclick="clearCanvas('initCanvas')">Clear</button>
+        <span class="section-label">1. Draw Your Initials:</span>
+        <canvas id="initCanvas" class="canvas-init"></canvas>
+      </div>
+      
+      <div style="margin-top: 15px;">
+        <button type="button" class="btn-clear" onclick="clearCanvas('sigCanvas')">Clear</button>
+        <span class="section-label">2. Draw Full Signature:</span>
+        <canvas id="sigCanvas" class="canvas-sig"></canvas>
+      </div>
+      
+      <div class="checkbox-container">
+        <input type="checkbox" id="consent" required> 
+        <label for="consent">I agree that drawing my initials and signature acts as a legally binding electronic execution.</label>
+      </div>
+      
+      <button type="submit" class="btn" id="submitBtn">Submit Final E-Sign</button>
+    </form>
+  </div>
+
+  <script>
+    // REPLACE THIS WITH YOUR APPS SCRIPT WEB APP /EXEC URL
+    const GAS_URL = "YOUR_APPS_SCRIPT_WEB_APP_URL_HERE";
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const row = urlParams.get('row');
+    const tenantNum = urlParams.get('tenantNum') || "1";
+
+    document.getElementById('rowInput').value = row;
+    document.getElementById('tenantNumInput').value = tenantNum;
+
+    // Ping the backend on load to see if link is expired
+    if(row) {
+      fetch(GAS_URL + "?action=check_status&row=" + row + "&tenantNum=" + tenantNum)
+        .then(response => response.json())
+        .then(data => {
+          document.getElementById('loadingMsg').style.display = 'none';
+          if(data.locked) {
+            document.getElementById('errorCard').style.display = 'block';
+          } else {
+            document.getElementById('signCard').style.display = 'block';
+            initPads();
+          }
+        })
+        .catch(err => {
+          document.getElementById('loadingMsg').innerText = "Error loading secure link.";
+        });
+    } else {
+      document.getElementById('loadingMsg').innerText = "Invalid Link.";
     }
-    
-    canvas.addEventListener('mousedown', function(e) { drawing = true; var pos = getPos(e); ctx.beginPath(); ctx.moveTo(pos.x, pos.y); });
-    canvas.addEventListener('mousemove', function(e) { if (!drawing) return; var pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.stroke(); });
-    canvas.addEventListener('mouseup', function() { drawing = false; });
-    canvas.addEventListener('touchstart', function(e) { drawing = true; var pos = getPos(e); ctx.beginPath(); ctx.moveTo(pos.x, pos.y); e.preventDefault(); });
-    canvas.addEventListener('touchmove', function(e) { if (!drawing) return; var pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.stroke(); e.preventDefault(); });
-    canvas.addEventListener('touchend', function() { drawing = false; });
-  }
 
-  setupPad('initCanvas'); 
-  setupPad('sigCanvas');
+    function initPads() {
+      setupPad('initCanvas', 6);
+      setupPad('sigCanvas', 4);
+    }
 
-  function clearCanvas(id) { 
-    var c = document.getElementById(id); 
-    c.getContext('2d').clearRect(0, 0, c.width, c.height); 
-  }
+    function setupPad(id, penWidth) {
+      var canvas = document.getElementById(id); var ctx = canvas.getContext('2d'); var drawing = false;
+      canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight;
+      ctx.strokeStyle = '#000000'; ctx.lineWidth = penWidth; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      function getPos(e) { var rect = canvas.getBoundingClientRect(); var clientX = e.touches ? e.touches[0].clientX : e.clientX; var clientY = e.touches ? e.touches[0].clientY : e.clientY; return { x: clientX - rect.left, y: clientY - rect.top }; }
+      canvas.addEventListener('mousedown', function(e) { drawing = true; var pos = getPos(e); ctx.beginPath(); ctx.moveTo(pos.x, pos.y); });
+      canvas.addEventListener('mousemove', function(e) { if (!drawing) return; var pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.stroke(); });
+      canvas.addEventListener('mouseup', function() { drawing = false; });
+      canvas.addEventListener('touchstart', function(e) { drawing = true; var pos = getPos(e); ctx.beginPath(); ctx.moveTo(pos.x, pos.y); e.preventDefault(); });
+      canvas.addEventListener('touchmove', function(e) { if (!drawing) return; var pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.stroke(); e.preventDefault(); });
+      canvas.addEventListener('touchend', function() { drawing = false; });
+    }
 
-  document.getElementById('signForm').onsubmit = function(e) {
-    e.preventDefault();
-    var btn = document.getElementById('submitBtn'); 
-    btn.disabled = true; 
-    btn.innerText = 'Processing...';
+    function clearCanvas(id) { var c = document.getElementById(id); c.getContext('2d').clearRect(0, 0, c.width, c.height); }
 
-    var payload = new URLSearchParams();
-    payload.append('action', 'submit_signature');
-    payload.append('row', row);
-    payload.append('tenantNum', tenantNum);
-    payload.append('initialData', document.getElementById('initCanvas').toDataURL('image/png'));
-    payload.append('signatureData', document.getElementById('sigCanvas').toDataURL('image/png'));
+    function getCroppedDataUrl(canvasId) {
+      var canvas = document.getElementById(canvasId);
+      var ctx = canvas.getContext('2d');
+      var w = canvas.width, h = canvas.height;
+      var imageData = ctx.getImageData(0,0,w,h);
+      var data = imageData.data;
+      var minX = w, minY = h, maxX = 0, maxY = 0;
+      var isEmpty = true;
+      for (var y = 0; y < h; y++) {
+        for (var x = 0; x < w; x++) {
+          var alpha = data[(y * w + x) * 4 + 3];
+          if (alpha > 0) {
+            if (x < minX) minX = x; if (x > maxX) maxX = x;
+            if (y < minY) minY = y; if (y > maxY) maxY = y;
+            isEmpty = false;
+          }
+        }
+      }
+      if (isEmpty) return canvas.toDataURL('image/png');
+      var padding = 10;
+      minX = Math.max(0, minX - padding); minY = Math.max(0, minY - padding);
+      maxX = Math.min(w, maxX + padding); maxY = Math.min(h, maxY + padding);
+      var cropW = maxX - minX; var cropH = maxY - minY;
+      var tempCanvas = document.createElement('canvas');
+      tempCanvas.width = cropW; tempCanvas.height = cropH;
+      var tempCtx = tempCanvas.getContext('2d');
+      tempCtx.putImageData(ctx.getImageData(minX, minY, cropW, cropH), 0, 0);
+      return tempCanvas.toDataURL('image/png');
+    }
 
-    fetch(BACKEND_API_URL, { method: 'POST', body: payload })
-    .then(r => r.text())
-    .then(txt => { 
-      document.getElementById('mainCard').innerHTML = '<h2>Execution Received!</h2><p>Your initials and signature have been recorded. You may close this page.</p>'; 
-    })
-    .catch(err => {
-      btn.disabled = false;
-      btn.innerText = 'Submit Final E-Sign';
-      alert('Error submitting signature. Please try again.');
-    });
-  };
-</script>
+    document.getElementById('signForm').onsubmit = function(e) {
+      e.preventDefault();
+      var btn = document.getElementById('submitBtn'); btn.disabled = true; btn.innerText = 'Processing...';
+      document.getElementById('initialData').value = getCroppedDataUrl('initCanvas');
+      document.getElementById('signatureData').value = getCroppedDataUrl('sigCanvas');
+      var formData = new FormData(this);
+      fetch(GAS_URL, { method: 'POST', body: new URLSearchParams(formData) })
+      .then(r => r.text()).then(txt => { 
+        document.body.innerHTML = '<div class="card" style="display:block;"><h2>Execution Received!</h2><p>Your initials and signature have been recorded. You may close this page.</p></div>'; 
+      });
+    };
+  </script>
 </body>
 </html>
