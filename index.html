@@ -73,7 +73,6 @@
     
     function clearCanvas(id) { var c = document.getElementById(id); c.getContext('2d').clearRect(0, 0, c.width, c.height); }
 
-    // Auto-Crop Algorithm
     function getCroppedDataUrl(canvasId) {
       var canvas = document.getElementById(canvasId);
       var ctx = canvas.getContext('2d');
@@ -115,20 +114,18 @@
       
       var formData = new FormData(this);
       
-      // We removed URLSearchParams to protect the raw Base64 image payload from corruption
-      fetch(GAS_URL, { method: 'POST', body: formData })
+      // FIX APPLIED: URLSearchParams bypasses the strict CORS Preflight block
+      fetch(GAS_URL, { method: 'POST', body: new URLSearchParams(formData) })
       .then(r => r.text())
       .then(txt => { 
-        // Only show success if Google explicitly confirms it
         if(txt.includes("SUCCESS") || txt.includes("Already") || txt.includes("processed")) {
           document.getElementById('mainCard').innerHTML = '<h2>Execution Received!</h2><p>Your initials and signature have been securely recorded. You may close this page.</p>'; 
         } else {
-          // If Google rejects it, show the real error on the screen
-          document.getElementById('mainCard').innerHTML = '<h2 style="color:#e74c3c;">Error Saving Signature</h2><p>The server responded: <strong>' + txt + '</strong></p><p>Please refresh the page and try again.</p>';
+          document.getElementById('mainCard').innerHTML = '<h2 style="color:#e74c3c;">Backend Error</h2><p>Google responded: <strong>' + txt + '</strong></p><p>Please refresh the page and try again.</p>';
         }
       })
       .catch(err => {
-         document.getElementById('mainCard').innerHTML = '<h2 style="color:#e74c3c;">Connection Error</h2><p>Failed to reach the database. Please check your internet connection.</p>';
+         document.getElementById('mainCard').innerHTML = '<h2 style="color:#e74c3c;">Connection Error</h2><p>Failed to reach Google. Error: ' + err.message + '</p>';
       });
     };
   </script>
